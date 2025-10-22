@@ -3259,7 +3259,7 @@ class PoolerConfig:
     """Controls the behavior of output pooling in pooling models."""
 
     pooling_type: Optional[Literal["last", "all", "cls", "step", "mean",
-                                   "vision"]] = None
+                                   "vision", "ALL"]] = None
     """
     The pooling method of the pooling model. This should be a key in
     [`vllm.model_executor.layers.pooler.PoolingType`][].
