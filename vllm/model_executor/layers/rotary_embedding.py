@@ -1253,6 +1253,27 @@ class MRotaryEmbedding(RotaryEmbedding):
         video_nums = (vision_tokens == video_token_id).sum()
         llm_pos_ids_list: list = []
 
+        # Validate that image_grid_thw and video_grid_thw have enough entries
+        if isinstance(image_grid_thw, list):
+            image_grid_thw_len = len(image_grid_thw)
+        else:
+            image_grid_thw_len = image_grid_thw.shape[0] if image_grid_thw.numel() > 0 else 0
+        if isinstance(video_grid_thw, list):
+            video_grid_thw_len = len(video_grid_thw)
+        else:
+            video_grid_thw_len = video_grid_thw.shape[0] if video_grid_thw.numel() > 0 else 0
+
+        if image_nums > image_grid_thw_len:
+            raise ValueError(
+                f"Mismatch between number of image tokens ({image_nums}) and "
+                f"image_grid_thw entries ({image_grid_thw_len}). "
+                f"Expected at least {image_nums} entries in image_grid_thw.")
+        if video_nums > video_grid_thw_len:
+            raise ValueError(
+                f"Mismatch between number of video tokens ({video_nums}) and "
+                f"video_grid_thw entries ({video_grid_thw_len}). "
+                f"Expected at least {video_nums} entries in video_grid_thw.")
+
         st = 0
         remain_images, remain_videos = image_nums, video_nums
 
@@ -1268,6 +1289,12 @@ class MRotaryEmbedding(RotaryEmbedding):
             else:
                 ed_video = len(input_tokens) + 1
             if ed_image < ed_video:
+                if image_index >= image_grid_thw_len:
+                    raise IndexError(
+                        f"Index {image_index} out of range for image_grid_thw "
+                        f"(length {image_grid_thw_len}). This indicates a mismatch "
+                        f"between the number of image tokens in input_tokens and "
+                        f"the provided image_grid_thw data.")
                 t, h, w = (
                     image_grid_thw[image_index][0],
                     image_grid_thw[image_index][1],
@@ -1277,6 +1304,12 @@ class MRotaryEmbedding(RotaryEmbedding):
                 remain_images -= 1
                 ed = ed_image
             else:
+                if video_index >= video_grid_thw_len:
+                    raise IndexError(
+                        f"Index {video_index} out of range for video_grid_thw "
+                        f"(length {video_grid_thw_len}). This indicates a mismatch "
+                        f"between the number of video tokens in input_tokens and "
+                        f"the provided video_grid_thw data.")
                 t, h, w = (
                     video_grid_thw[video_index][0],
                     video_grid_thw[video_index][1],
