@@ -767,11 +767,9 @@ class VisionPooler(Pooler):
         pooled_outputs = []
         for i in range(len(pooling_metadata.prompt_lens)):
             start_pos = (pooling_metadata.prompt_token_ids[i] ==
-                         self.config.hf_config.vision_start_token_id).
-                nonzero()[-1].item()
+                         self.config.hf_config.vision_start_token_id).nonzero()[-1].item()
             end_pos = (pooling_metadata.prompt_token_ids[i] ==
-                       self.config.hf_config.vision_end_token_id).
-                nonzero()[-1].item()
+                       self.config.hf_config.vision_end_token_id).nonzero()[-1].item()
 
             seq_start = torch.cumsum(
                 torch.tensor([0] + pooling_metadata.prompt_lens.tolist()),
