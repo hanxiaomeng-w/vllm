@@ -450,17 +450,37 @@ class GPUModelRunner(LoRAModelRunnerMixin):
 
                 hf_config = self.model_config.hf_config
 
-                self.requests[req_id].mrope_positions, \
-                    self.requests[req_id].mrope_position_delta = \
-                    MRotaryEmbedding.get_input_positions_tensor(
-                        self.requests[req_id].prompt_token_ids,
-                        hf_config=hf_config,
-                        image_grid_thw=image_grid_thw,
-                        video_grid_thw=video_grid_thw,
-                        second_per_grid_ts=second_per_grid_ts,
-                        audio_feature_lengths=audio_feature_lengths,
-                        use_audio_in_video=use_audio_in_video,
-                    )
+                # Check if there is actual multimodal data
+                has_multimodal_data = (
+                    len(image_grid_thw) > 0 or
+                    len(video_grid_thw) > 0 or
+                    (audio_feature_lengths and len(audio_feature_lengths) > 0)
+                )
+
+                if has_multimodal_data:
+                    # Has multimodal data, use complex position calculation
+                    self.requests[req_id].mrope_positions, \
+                        self.requests[req_id].mrope_position_delta = \
+                        MRotaryEmbedding.get_input_positions_tensor(
+                            self.requests[req_id].prompt_token_ids,
+                            hf_config=hf_config,
+                            image_grid_thw=image_grid_thw,
+                            video_grid_thw=video_grid_thw,
+                            second_per_grid_ts=second_per_grid_ts,
+                            audio_feature_lengths=audio_feature_lengths,
+                            use_audio_in_video=use_audio_in_video,
+                        )
+                else:
+                    # Text-only input: generate simple 3D position encoding
+                    # Each dimension has identical position IDs [0, 1, 2, ...]
+                    # This makes M-RoPE functionally equivalent to 1D-RoPE
+                    seq_len = len(self.requests[req_id].prompt_token_ids)
+                    positions = torch.arange(seq_len).unsqueeze(0).expand(3, -1)
+                    self.requests[req_id].mrope_positions = positions
+                    self.requests[req_id].mrope_position_delta = 0
+
+                    logger.warning(f"Request {req_id} has no multimodal data but "
+                                 f"uses_mrope=True. Treating as text-only.")
 
             req_ids_to_add.append(req_id)
 
